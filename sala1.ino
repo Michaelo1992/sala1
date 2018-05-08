@@ -22,13 +22,17 @@
 //#define D9 3
 
 bool flaginterr = false;
+bool flagauxilio = false;
 const int interruptPin = 5; //GPIO 0 (Flash Button) 
 int8_t ret;
 void MQTT_connect();
 const char* nameOta = "espmaster";
 
-char __ssssid[] = "RODRIGO_ROMAN"; //  your network SSID (name)
-char __spasswd[] = "rodrigo1964";    // your network password (use for WPA, or use as key for WEP)
+//char __ssssid[] = "RODRIGO_ROMAN"; //  your network SSID (name)
+//char __spasswd[] = "rodrigo1964";    // your network password (use for WPA, or use as key for WEP)
+
+char __ssssid[] = "dlink 1"; //  your network SSID (name)
+char __spasswd[] = "liguista123";    // your network password (use for WPA, or use as key for WEP)
 
 //char __ssssid[] = "VILLACIS"; //  your network SSID (name)
 //char __spasswd[] = "Ambato2019";    // your network password (use for WPA, or use as key for WEP)
@@ -37,12 +41,14 @@ char __spasswd[] = "rodrigo1964";    // your network password (use for WPA, or u
 //char __spasswd[] = "IOTIEEEUNLP";    // your network password (use for WPA, or use as key for WEP)
 
 WiFiClient client;
-//Adafruit_MQTT_Client mqtt(&client,"159.203.139.127", 1883);
-Adafruit_MQTT_Client mqtt(&client,"192.168.0.90", 1883);
+Adafruit_MQTT_Client mqtt(&client,"159.203.139.127", 1883);
+//Adafruit_MQTT_Client mqtt(&client,"192.168.0.90", 1883);
 
 Adafruit_MQTT_Publish focoestado = Adafruit_MQTT_Publish(&mqtt,"home/master/switch1");
+Adafruit_MQTT_Publish auxestado = Adafruit_MQTT_Publish(&mqtt,"home/master/switch1/aux");
 // Setup a feed called 'time' for subscribing to current time
 Adafruit_MQTT_Subscribe foco = Adafruit_MQTT_Subscribe(&mqtt, "home/master/switch1/set");
+Adafruit_MQTT_Subscribe auxilio = Adafruit_MQTT_Subscribe(&mqtt, "home/master/switch1/set/aux");
 
 //Adafruit_MQTT_Subscribe keepalive = Adafruit_MQTT_Subscribe(&mqtt, "/keepalive", MQTT_QOS_1);
 
@@ -57,17 +63,37 @@ void fococallback(char *x, uint16_t len) {
   //Serial.println(flaginterr);
   
   String mijin=String(x);
-  if(mijin=="ON"){
+  if(mijin=="ON" && flagauxilio == false){
     digitalWrite(D0,HIGH);
     focoestado.publish("ON");
     //Serial.println("envio ON"); 
     
-  }else if(mijin=="OFF"){
+  }else if(mijin=="OFF" && flagauxilio == false){
     digitalWrite(D0,LOW);
     //Serial.println("envio OFF");
     focoestado.publish("OFF");
   }
  interrupts();
+}
+
+
+void auxcallback(char *x, uint16_t len) {
+  noInterrupts();
+  Serial.println(x);
+  //Serial.println(flaginterr);
+  
+  String mijin=String(x);
+  if(mijin=="ON"){
+    flagauxilio = true;
+    digitalWrite(D2,LOW);
+    auxestado.publish("Modo manual unicamente");
+  }
+  if(mijin=="OFF"){
+    digitalWrite(D2,HIGH);
+    flagauxilio = false;
+    auxestado.publish("Modo manual desactivado");
+  }
+  interrupts();
 }
 
 void handleInterrupt() { 
@@ -81,7 +107,7 @@ void handleInterrupt() {
 
 void setup() {
   //noInterrupts();
-   
+  attachInterrupt(digitalPinToInterrupt(interruptPin), handleInterrupt, CHANGE); 
   EEPROM.begin(400);
   Serial.begin(115200);
   pinMode(interruptPin,INPUT); 
@@ -91,7 +117,7 @@ void setup() {
   pinMode(10,OUTPUT);
   pinMode(D4,OUTPUT);
   pinMode(D5,OUTPUT);
-  digitalWrite(D2,LOW);
+  digitalWrite(D2,HIGH);
   digitalWrite(D4,LOW);
   digitalWrite(D5,LOW);
 //  digitalWrite(10,HIGH);
@@ -105,24 +131,30 @@ void setup() {
 //  digitalWrite(10,HIGH);
 
   //attachInterrupt(interruptPin, handleInterrupt, RISING); 
+  if (flaginterr == true)
+    {
+      Accion();
+    }
   delay(50);
-  
+  if (flaginterr == true)
+    {
+      Accion();
+    }
   Serial.println(F("Iniciando...."));
   //Conectando a red WiFI
-  OTA_set();
   wifi_conection();
+  OTA_set();
   //keepalive.setCallback(keepalive1);
   foco.setCallback(fococallback);
+  auxilio.setCallback(auxcallback);
   //Setup MQTT subscription for time feed.
   mqtt.subscribe(&foco);
+  mqtt.subscribe(&auxilio);
   MQTT_connect(); // una vez conectado a la red WiFi, busca coneccion al servidor MQTT
-  attachInterrupt(digitalPinToInterrupt(interruptPin), handleInterrupt, CHANGE);
-  digitalWrite(D2,HIGH);
+  
   //interrupts();
   //FIN SETUP
 }
-
-
 
 
 void OTA_set(){
@@ -147,9 +179,8 @@ void OTA_set(){
     else if (error == OTA_END_ERROR) Serial.println("End Failed");
   });
   ArduinoOTA.begin();
-  Serial.println("Ready");
+  Serial.println("Ready OTA");
 }
-
 
 void wifi_conection(){
   
@@ -168,14 +199,17 @@ void wifi_conection(){
     //digitalWrite(10,LOW);
     delay(250);
     Serial.print(".");
-    
+    if (flaginterr == true)
+       {
+         Accion();
+       }
   }
   
   if (WiFi.status() == WL_CONNECTED) 
   {
     Serial.println(F("WiFi conectado exitosamente"));
     digitalWrite(10,HIGH);
-    digitalWrite(D2,HIGH);
+    //digitalWrite(D2,HIGH);
   }
   
   //Serial.println(F("Conectado")); 
@@ -189,18 +223,14 @@ void wifi_conection(){
 
 
 void loop() {
-   ArduinoOTA.handle();
+  ArduinoOTA.handle();
 // Valida estar conectado a una red WiFI
   mqtt.processPackets(900);
   if (WiFi.status() != WL_CONNECTED)
     { 
-      noInterrupts();
-      digitalWrite(D2,LOW);
       digitalWrite(10,LOW);
       Serial.println("Conectando a red WiFi");
       wifi_conection();
-      digitalWrite(D2,HIGH);
-      interrupts();
       if(digitalRead(D0) == HIGH){
         focoestado.publish("ON");
       }else if(digitalRead(D0) == LOW){
@@ -210,13 +240,9 @@ void loop() {
 // Valida estar conectado al servidor MQTT  
   if ((ret = mqtt.connect()) != 0) 
   {
-    noInterrupts();
-    digitalWrite(D2,LOW);
     digitalWrite(D5,LOW);
     Serial.println("Conectando a servidor MQTT");
     MQTT_connect();
-    digitalWrite(D2,HIGH);
-    interrupts();
     if(digitalRead(D0) == HIGH){
        focoestado.publish("ON");
     }else if(digitalRead(D0) == LOW){
@@ -228,6 +254,14 @@ void loop() {
   if (flaginterr == true)
   {
    Accion();
+  }
+
+  while(flagauxilio == true){
+    digitalWrite(D2,LOW);
+    Serial.println("manual");
+    ArduinoOTA.handle();
+    mqtt.processPackets(900);
+    delay(1000);
   }
 
 //FIN LOOP
@@ -276,7 +310,11 @@ void MQTT_connect() {
        Serial.println(mqtt.connectErrorString(ret));
        Serial.println("Reintentado Conexion...");
        mqtt.disconnect();
-       delay(1000);  // wait 5 seconds
+       if (flaginterr == true)
+        {
+          Accion();
+        }
+       delay(2000);  // wait 5 seconds
        retries--;
        if (retries == 0) {
           Serial.println("Validando conexion a WiFi");
