@@ -1,4 +1,4 @@
-
+// programa base
 #include <ESP8266WiFi.h>
 #include <SPI.h>
 //#include "MFRC522.h"
