@@ -81,7 +81,7 @@ void handleInterrupt() {
 
 void setup() {
   //noInterrupts();
-  attachInterrupt(digitalPinToInterrupt(interruptPin), handleInterrupt, CHANGE); 
+   
   EEPROM.begin(400);
   Serial.begin(115200);
   pinMode(interruptPin,INPUT); 
@@ -91,7 +91,7 @@ void setup() {
   pinMode(10,OUTPUT);
   pinMode(D4,OUTPUT);
   pinMode(D5,OUTPUT);
-  digitalWrite(D2,HIGH);
+  digitalWrite(D2,LOW);
   digitalWrite(D4,LOW);
   digitalWrite(D5,LOW);
 //  digitalWrite(10,HIGH);
@@ -105,15 +105,8 @@ void setup() {
 //  digitalWrite(10,HIGH);
 
   //attachInterrupt(interruptPin, handleInterrupt, RISING); 
-  if (flaginterr == true)
-    {
-      Accion();
-    }
   delay(50);
-  if (flaginterr == true)
-    {
-      Accion();
-    }
+  
   Serial.println(F("Iniciando...."));
   //Conectando a red WiFI
   OTA_set();
@@ -123,7 +116,8 @@ void setup() {
   //Setup MQTT subscription for time feed.
   mqtt.subscribe(&foco);
   MQTT_connect(); // una vez conectado a la red WiFi, busca coneccion al servidor MQTT
-  
+  attachInterrupt(digitalPinToInterrupt(interruptPin), handleInterrupt, CHANGE);
+  digitalWrite(D2,HIGH);
   //interrupts();
   //FIN SETUP
 }
@@ -174,10 +168,7 @@ void wifi_conection(){
     //digitalWrite(10,LOW);
     delay(250);
     Serial.print(".");
-    if (flaginterr == true)
-       {
-         Accion();
-       }
+    
   }
   
   if (WiFi.status() == WL_CONNECTED) 
@@ -203,9 +194,13 @@ void loop() {
   mqtt.processPackets(900);
   if (WiFi.status() != WL_CONNECTED)
     { 
+      noInterrupts();
+      digitalWrite(D2,LOW);
       digitalWrite(10,LOW);
       Serial.println("Conectando a red WiFi");
       wifi_conection();
+      digitalWrite(D2,HIGH);
+      interrupts();
       if(digitalRead(D0) == HIGH){
         focoestado.publish("ON");
       }else if(digitalRead(D0) == LOW){
@@ -215,9 +210,13 @@ void loop() {
 // Valida estar conectado al servidor MQTT  
   if ((ret = mqtt.connect()) != 0) 
   {
+    noInterrupts();
+    digitalWrite(D2,LOW);
     digitalWrite(D5,LOW);
     Serial.println("Conectando a servidor MQTT");
     MQTT_connect();
+    digitalWrite(D2,HIGH);
+    interrupts();
     if(digitalRead(D0) == HIGH){
        focoestado.publish("ON");
     }else if(digitalRead(D0) == LOW){
@@ -277,11 +276,7 @@ void MQTT_connect() {
        Serial.println(mqtt.connectErrorString(ret));
        Serial.println("Reintentado Conexion...");
        mqtt.disconnect();
-       if (flaginterr == true)
-        {
-          Accion();
-        }
-       delay(2000);  // wait 5 seconds
+       delay(1000);  // wait 5 seconds
        retries--;
        if (retries == 0) {
           Serial.println("Validando conexion a WiFi");
@@ -299,6 +294,6 @@ void MQTT_connect() {
   }
   Serial.println("Conectado al servidor MQTT!");
   digitalWrite(D5,HIGH);
-  digitalWrite(D2,HIGH);
+  //digitalWrite(D2,HIGH);
   
 }
