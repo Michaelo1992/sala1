@@ -187,10 +187,10 @@ void wifi_conection(){
   Serial.println("Conectando a una red WiFi");
   WiFi.begin(__ssssid,__spasswd);
   
-  int retries = 0;
-  while ((WiFi.status() != WL_CONNECTED) && retries <= 70) 
+  //int retries = 0;
+  while ((WiFi.status() != WL_CONNECTED))// && retries <= 70) 
   {
-    retries++;
+    //retries++;
     digitalWrite(10,LOW);
     //digitalWrite(D2,LOW);
     Serial.print("*");
