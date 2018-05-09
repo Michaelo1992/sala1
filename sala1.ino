@@ -41,8 +41,8 @@ char __spasswd[] = "liguista123";    // your network password (use for WPA, or u
 //char __spasswd[] = "IOTIEEEUNLP";    // your network password (use for WPA, or use as key for WEP)
 
 WiFiClient client;
-Adafruit_MQTT_Client mqtt(&client,"159.203.139.127", 1883);
-//Adafruit_MQTT_Client mqtt(&client,"192.168.0.90", 1883);
+//Adafruit_MQTT_Client mqtt(&client,"159.203.139.127", 1883);
+Adafruit_MQTT_Client mqtt(&client,"192.168.0.90", 1883);
 
 Adafruit_MQTT_Publish focoestado = Adafruit_MQTT_Publish(&mqtt,"home/master/switch1");
 Adafruit_MQTT_Publish auxestado = Adafruit_MQTT_Publish(&mqtt,"home/master/switch1/aux");
@@ -107,7 +107,7 @@ void handleInterrupt() {
 
 void setup() {
   //noInterrupts();
-  attachInterrupt(digitalPinToInterrupt(interruptPin), handleInterrupt, CHANGE); 
+  
   EEPROM.begin(400);
   Serial.begin(115200);
   pinMode(interruptPin,INPUT); 
@@ -131,6 +131,7 @@ void setup() {
 //  digitalWrite(10,HIGH);
 
   //attachInterrupt(interruptPin, handleInterrupt, RISING); 
+  attachInterrupt(digitalPinToInterrupt(interruptPin), handleInterrupt, CHANGE); 
   if (flaginterr == true)
     {
       Accion();
@@ -304,17 +305,18 @@ void MQTT_connect() {
 
   //digitalWrite(D2,HIGH);
   Serial.print("Conectando a  MQTT... ");
-  int retries=10;
+  int retries=20;
   while ((ret = mqtt.connect()) != 0) { // connect will return 0 for connected
        digitalWrite(D4,LOW);
-       Serial.println(mqtt.connectErrorString(ret));
+       //Serial.println(mqtt.connectErrorString(ret));
        Serial.println("Reintentado Conexion...");
        mqtt.disconnect();
        if (flaginterr == true)
         {
           Accion();
+          Serial.println("accion realizada");
         }
-       delay(2000);  // wait 5 seconds
+       //delay(200);  // wait 5 seconds
        retries--;
        if (retries == 0) {
           Serial.println("Validando conexion a WiFi");
@@ -327,7 +329,7 @@ void MQTT_connect() {
             } else {
               Serial.println("Conexion a wifi estable");
             }
-          retries =10;
+          retries =20;
       }
   }
   Serial.println("Conectado al servidor MQTT!");
