@@ -1,7 +1,5 @@
 // programa base
 #include <ESP8266WiFi.h>
-#include <SPI.h>
-//#include "MFRC522.h"
 #include <EEPROM.h>
 #include "Adafruit_MQTT.h"
 #include "Adafruit_MQTT_Client.h"
@@ -23,7 +21,7 @@
 
 bool flaginterr = false;
 bool flagauxilio = false;
-const int interruptPin = 5; //GPIO 0 (Flash Button) 
+const int interruptPin = 5;
 int8_t ret;
 void MQTT_connect();
 const char* nameOta = "espmaster";
@@ -31,31 +29,27 @@ const char* nameOta = "espmaster";
 //char __ssssid[] = "RODRIGO_ROMAN"; //  your network SSID (name)
 //char __spasswd[] = "rodrigo1964";    // your network password (use for WPA, or use as key for WEP)
 
-char __ssssid[] = "dlink 1"; //  your network SSID (name)
-char __spasswd[] = "liguista123";    // your network password (use for WPA, or use as key for WEP)
+//char __ssssid[] = "dlink 1"; //  your network SSID (name)
+//char __spasswd[] = "liguista123";    // your network password (use for WPA, or use as key for WEP)
 
 //char __ssssid[] = "VILLACIS"; //  your network SSID (name)
 //char __spasswd[] = "Ambato2019";    // your network password (use for WPA, or use as key for WEP)
 
-//char __ssssid[] = "IOT-IEEE"; //  your network SSID (name)
-//char __spasswd[] = "IOTIEEEUNLP";    // your network password (use for WPA, or use as key for WEP)
+char __ssssid[] = "IOT-IEEE"; //  your network SSID (name)
+char __spasswd[] = "IOTIEEEUNLP";    // your network password (use for WPA, or use as key for WEP)
 
 WiFiClient client;
 //Adafruit_MQTT_Client mqtt(&client,"159.203.139.127", 1883);
 Adafruit_MQTT_Client mqtt(&client,"192.168.0.90", 1883);
 
+
 Adafruit_MQTT_Publish focoestado = Adafruit_MQTT_Publish(&mqtt,"home/master/switch1");
 Adafruit_MQTT_Publish auxestado = Adafruit_MQTT_Publish(&mqtt,"home/master/switch1/aux");
+Adafruit_MQTT_Publish inicio = Adafruit_MQTT_Publish(&mqtt,"home/master/switch1/inicio");
 // Setup a feed called 'time' for subscribing to current time
 Adafruit_MQTT_Subscribe foco = Adafruit_MQTT_Subscribe(&mqtt, "home/master/switch1/set");
 Adafruit_MQTT_Subscribe auxilio = Adafruit_MQTT_Subscribe(&mqtt, "home/master/switch1/set/aux");
 
-//Adafruit_MQTT_Subscribe keepalive = Adafruit_MQTT_Subscribe(&mqtt, "/keepalive", MQTT_QOS_1);
-
-//void keepalive1(double x) {
-//  Serial.print("Hey we're in a slider callback, the slider value is: ");
-//  Serial.println(x);
-//}
 
 void fococallback(char *x, uint16_t len) {
   noInterrupts();
@@ -120,22 +114,8 @@ void setup() {
   digitalWrite(D2,HIGH);
   digitalWrite(D4,LOW);
   digitalWrite(D5,LOW);
-//  digitalWrite(10,HIGH);
-//  delay(250);
-//  digitalWrite(10,LOW);
-//  delay(250);
-//  digitalWrite(10,HIGH);
-//  delay(250);
-//  digitalWrite(10,LOW);
-//  delay(250);
-//  digitalWrite(10,HIGH);
-
   //attachInterrupt(interruptPin, handleInterrupt, RISING); 
   attachInterrupt(digitalPinToInterrupt(interruptPin), handleInterrupt, CHANGE); 
-  if (flaginterr == true)
-    {
-      Accion();
-    }
   delay(50);
   if (flaginterr == true)
     {
@@ -152,7 +132,8 @@ void setup() {
   mqtt.subscribe(&foco);
   mqtt.subscribe(&auxilio);
   MQTT_connect(); // una vez conectado a la red WiFi, busca coneccion al servidor MQTT
-  
+  delay(200);
+  inicio.publish(1);
   //interrupts();
   //FIN SETUP
 }
@@ -186,18 +167,16 @@ void OTA_set(){
 void wifi_conection(){
   
   Serial.println("Conectando a una red WiFi");
+  //WiFi.mode(WIFI_STA);
+  //WiFi.config(ip, gateway, subnet);
   WiFi.begin(__ssssid,__spasswd);
   
-  //int retries = 0;
   while ((WiFi.status() != WL_CONNECTED))// && retries <= 70) 
   {
-    //retries++;
     digitalWrite(10,LOW);
     //digitalWrite(D2,LOW);
     Serial.print("*");
     WiFi.begin(__ssssid,__spasswd);
-    //delay(350);
-    //digitalWrite(10,LOW);
     delay(250);
     Serial.print(".");
     if (flaginterr == true)
@@ -210,7 +189,6 @@ void wifi_conection(){
   {
     Serial.println(F("WiFi conectado exitosamente"));
     digitalWrite(10,HIGH);
-    //digitalWrite(D2,HIGH);
   }
   
   //Serial.println(F("Conectado")); 
@@ -286,6 +264,7 @@ void Accion(){
       focoestado.publish("ON");
       //Serial.println("enviado ON");
     }
+    Serial.println("accion realizada");
     delay(700);
     flaginterr = false;
     interrupts();
@@ -294,16 +273,13 @@ void Accion(){
 
 void MQTT_connect() {
   // Coneccion a servidor MQTT
-  //digitalWrite(D2,LOW);
-  //int8_t ret;
   // Stop if already connected.
   if (mqtt.connected()) {
     Serial.println("Conectado a servidor");
-    digitalWrite(D5,HIGH);
+    //digitalWrite(D5,HIGH);
     return;
   }
 
-  //digitalWrite(D2,HIGH);
   Serial.print("Conectando a  MQTT... ");
   int retries=20;
   while ((ret = mqtt.connect()) != 0) { // connect will return 0 for connected
@@ -314,13 +290,12 @@ void MQTT_connect() {
        if (flaginterr == true)
         {
           Accion();
-          Serial.println("accion realizada");
         }
        //delay(200);  // wait 5 seconds
        retries--;
        if (retries == 0) {
           Serial.println("Validando conexion a WiFi");
-          delay(200);
+          //delay(200);
           if (WiFi.status() != WL_CONNECTED)
             { 
               Serial.println("Reconectando a red WiFi");
@@ -333,7 +308,5 @@ void MQTT_connect() {
       }
   }
   Serial.println("Conectado al servidor MQTT!");
-  digitalWrite(D5,HIGH);
-  //digitalWrite(D2,HIGH);
   
 }
