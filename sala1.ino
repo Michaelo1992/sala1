@@ -101,21 +101,21 @@ void handleInterrupt() {
 
 void setup() {
   //noInterrupts();
-  
+  pinMode(D2,OUTPUT);
+  digitalWrite(D2,LOW);
+  pinMode(D0,OUTPUT);
+  digitalWrite(D0,LOW);
   EEPROM.begin(400);
   Serial.begin(115200);
   pinMode(interruptPin,INPUT); 
   delay(500);
-  pinMode(D0,OUTPUT);
-  pinMode(D2,OUTPUT);
   pinMode(10,OUTPUT);
   pinMode(D4,OUTPUT);
   pinMode(D5,OUTPUT);
-  digitalWrite(D2,HIGH);
   digitalWrite(D4,LOW);
   digitalWrite(D5,LOW);
   //attachInterrupt(interruptPin, handleInterrupt, RISING); 
-  attachInterrupt(digitalPinToInterrupt(interruptPin), handleInterrupt, CHANGE); 
+  //attachInterrupt(digitalPinToInterrupt(interruptPin), handleInterrupt, CHANGE); 
   delay(50);
   if (flaginterr == true)
     {
@@ -134,6 +134,13 @@ void setup() {
   MQTT_connect(); // una vez conectado a la red WiFi, busca coneccion al servidor MQTT
   delay(200);
   inicio.publish(1);
+  if (digitalRead(interruptPin) == HIGH){
+    digitalWrite(D0,HIGH);
+  }else if (digitalRead(interruptPin) == LOW){
+    digitalWrite(D0,LOW);
+  }
+  attachInterrupt(digitalPinToInterrupt(interruptPin), handleInterrupt, CHANGE); 
+  digitalWrite(D2,LOW);
   //interrupts();
   //FIN SETUP
 }
